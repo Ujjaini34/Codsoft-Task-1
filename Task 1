@@ -1,0 +1,86 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# Load the dataset
+titanic_df = pd.read_csv(r"C:\Users\Ujjaini\OneDrive\Desktop\CodSoft\Titanic Dataset.csv")
+
+# Check for missing values
+print(titanic_df.isnull().sum())
+
+# Fill missing values in the 'Age' column with the median age
+titanic_df['Age'] = titanic_df['Age'].fillna(titanic_df['Age'].median())
+
+# Fill missing values in the 'Fare' column with the median fare
+titanic_df['Fare'] = titanic_df['Fare'].fillna(titanic_df['Fare'].median())
+
+# Fill missing values in the 'Embarked' column with the most common port
+titanic_df['Embarked'] = titanic_df['Embarked'].fillna(titanic_df['Embarked'].mode()[0])
+
+# Convert categorical variables into numerical variables
+titanic_df['Sex'] = titanic_df['Sex'].map({'male': 0, 'female': 1})
+titanic_df['Embarked'] = titanic_df['Embarked'].map({'S': 0, 'C': 1, 'Q': 2})
+
+# Extract the title from the 'Name' column
+titanic_df['Title'] = titanic_df['Name'].str.extract(r' ([A-Za-z]+)\.', expand=False)
+
+# Map the title to a numerical variable and handle rare titles
+title_mapping = {
+    'Mr': 0, 'Miss': 1, 'Mrs': 2, 'Master': 3, 'Dr': 4, 'Rev': 5, 
+    'Col': 6, 'Major': 7, 'Mlle': 8, 'Countess': 9, 'Ms': 10, 'Lady': 11, 
+    'Jonkheer': 12, 'Don': 13, 'Dona': 14, 'Mme': 15, 'Capt': 16, 
+    'Sir': 17
+}
+titanic_df['Title'] = titanic_df['Title'].map(title_mapping)
+titanic_df['Title'] = titanic_df['Title'].fillna(18)  # Map any missing titles to a new category
+
+# Drop the 'Name' column
+titanic_df = titanic_df.drop('Name', axis=1)
+
+# Drop the 'Ticket' column
+titanic_df = titanic_df.drop('Ticket', axis=1)
+
+# Drop the 'Cabin' column
+titanic_df = titanic_df.drop('Cabin', axis=1)
+
+# Save the PassengerId for the final submission
+passenger_ids = titanic_df['PassengerId']
+
+# Split the dataset into features (X) and target (y)
+X = titanic_df.drop('Survived', axis=1)
+y = titanic_df['Survived']
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Scale the features using StandardScaler
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Train a random forest classifier
+rfc = RandomForestClassifier(n_estimators=100, random_state=42)
+rfc.fit(X_train, y_train)
+
+# Make predictions on the test set
+y_pred = rfc.predict(X_test)
+
+# Evaluate the model
+print('Accuracy:', accuracy_score(y_test, y_pred))
+print('Classification Report:')
+print(classification_report(y_test, y_pred))
+print('Confusion Matrix:')
+print(confusion_matrix(y_test, y_pred))
+
+# For the final submission, get predictions on the test dataset
+X_all = scaler.fit_transform(X)
+final_predictions = rfc.predict(X_all)
+
+# Save the predictions to a CSV file
+submission_df = pd.DataFrame({'PassengerId': passenger_ids, 'Survived': final_predictions})
+submission_df.to_csv('submission.csv', index=False)
